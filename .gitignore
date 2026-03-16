@@ -1,0 +1,36 @@
+!work1/spread-sheet-test.json
+
+# Virtual environment
+venv/
+.venv/
+env/
+Lib/
+Scripts/
+pyvenv.*
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Django
+db.sqlite3
+*.log
+media/
+staticfiles/
+dump.rdb
+
+# Environment
+.env
+.env.*
+
+# Celery
+celerybeat-schedule
+celerybeat-schedule.*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
