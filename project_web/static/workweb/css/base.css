@@ -1,0 +1,58 @@
+/* ボタンを右上に固定するスタイル */
+.button-container {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.button-container a {
+    padding: 10px;
+    background-color: blue;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.button-container a:hover {
+    background-color: darkblue;
+}
+
+
+/*検索フォームとボタンを横並び*/
+
+.form-button-row {
+    display: flex;
+    gap: 20px; /* ボタン間の間隔を調整 */
+    justify-content: start; /* 左揃え（必要に応じて変更） */
+    align-items: center; /* 縦方向の中央揃え */
+    margin-bottom: 20px; /* 全体の下部余白を追加 */
+}
+
+.form-button-row form {
+    margin: 0; /* デフォルトの余白をリセット */
+}
+
+input[type="text"] {
+    width: 300px; /* テキストボックスの幅 */
+    padding: 8px;
+    margin-right: 10px; /* テキストボックスとボタンの間のスペース */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+
+/*出品ボタン*/
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: blue;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.button:hover {
+    background-color: darkblue;
+}

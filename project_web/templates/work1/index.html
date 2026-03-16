@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL検索フォームと結果表示</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'workweb/css/base.css' %}">
+</head>
+<body>
+
+    <!-- ボタンを右上に配置 -->
+    <div class="button-container">
+        <a href="{{ auth_url }}">Sign in with eBay</a>
+    </div>
+    
+    <h1>メルカリ・ヤフオク・ヤフーフリマ・ラクマ・楽天市場 スクレイピング表</h1>
+
+    <div>
+        <a href="/ebay_form/" style="padding: 10px; background-color: green; color: white; text-decoration: none;">
+            出品ページへ
+        </a>
+    </div>
+
+    <!-- 検索フォームとボタンを横並びに配置 -->
+    <div class="form-button-row">
+        <!-- 検索フォーム -->
+        <form action="/" method="POST">
+            {% csrf_token %}
+            <input type="text" id="url" name="url" placeholder="商品ページURLを入力" required>
+            <button type="submit">実行</button>
+        </form>
+
+        <!-- 情報を更新ボタン -->
+        <form action="/update-scrapers/" method="POST">
+            {% csrf_token %}
+            <button type="submit">情報を更新</button>
+        </form>
+
+        <!-- eBay情報を更新ボタン -->
+        <form action="/update-ebay/" method="POST">
+            {% csrf_token %}
+            <button type="submit">eBay情報を更新</button>
+        </form>
+    </div>
+
+    <!-- スプレッドシートの埋め込み -->
+    
+    <iframe src="{{ sheet_url }}" width="100%" height="1000"></iframe>
+
+</body>
+</html>

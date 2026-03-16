@@ -1,0 +1,3 @@
+
+web: gunicorn workweb.wsgi
+//worker: celery -A workweb worker --loglevel=info

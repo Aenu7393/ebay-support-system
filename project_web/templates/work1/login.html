@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ログイン</title>
+</head>
+<body>
+    <h1>ログインページ</h1>
+    <form method="post">
+        {% csrf_token %}
+        <label for="username">ユーザー名:</label>
+        <input type="text" name="username" required><br><br>
+        <label for="password">パスワード:</label>
+        <input type="password" name="password" required><br><br>
+        <button type="submit">ログイン</button>
+    </form>
+
+    <br> <!-- スペースを追加 -->
+    <p>アカウントをお持ちでない方は、以下のボタンからサインアップしてください。</p>
+    <a href="{% url 'work1:signup' %}">
+        <button type="button">サインアップ</button>
+    </a>
+
+</body>
+</html>
