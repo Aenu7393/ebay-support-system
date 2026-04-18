@@ -1,13 +1,7 @@
-
-!work1/spread-sheet-test.json
-
 # Virtual environment
 venv/
 .venv/
 env/
-Lib/
-Scripts/
-pyvenv.*
 
 # Python
 __pycache__/
@@ -36,4 +30,7 @@ celerybeat-schedule.*
 .DS_Store
 Thumbs.db
 
-project_web/work1/spread-sheet-test.json
+
+
+# Secrets
+project_web/work1/spread-sheet-test.jsonproject_web/workweb/settings.py

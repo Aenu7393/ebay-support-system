@@ -1,49 +1,17 @@
-/* ボタンを右上に固定するスタイル */
+.page-header {
+    position: relative;
+}
+
+/* 右上固定ボタン */
 .button-container {
     position: absolute;
     top: 10px;
     right: 10px;
 }
 
+/* 共通ボタンスタイル */
+.button,
 .button-container a {
-    padding: 10px;
-    background-color: blue;
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    font-weight: bold;
-}
-
-.button-container a:hover {
-    background-color: darkblue;
-}
-
-
-/*検索フォームとボタンを横並び*/
-
-.form-button-row {
-    display: flex;
-    gap: 20px; /* ボタン間の間隔を調整 */
-    justify-content: start; /* 左揃え（必要に応じて変更） */
-    align-items: center; /* 縦方向の中央揃え */
-    margin-bottom: 20px; /* 全体の下部余白を追加 */
-}
-
-.form-button-row form {
-    margin: 0; /* デフォルトの余白をリセット */
-}
-
-input[type="text"] {
-    width: 300px; /* テキストボックスの幅 */
-    padding: 8px;
-    margin-right: 10px; /* テキストボックスとボタンの間のスペース */
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-
-/*出品ボタン*/
-.button {
     display: inline-block;
     padding: 10px 20px;
     background-color: blue;
@@ -51,8 +19,36 @@ input[type="text"] {
     text-decoration: none;
     border-radius: 5px;
     font-weight: bold;
+    border: none;
+    cursor: pointer;
 }
 
-.button:hover {
+.button:hover,
+.button-container a:hover {
     background-color: darkblue;
+}
+
+/* 検索フォームとボタンを横並び */
+.form-button-row {
+    display: flex;
+    gap: 20px;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap; /* 画面が狭い時に折り返す */
+}
+
+.form-button-row form {
+    margin: 0;
+}
+
+/* 必要な入力欄だけに効くようクラス指定 */
+.form-text-input {
+    width: 300px;
+    max-width: 100%;
+    padding: 8px;
+    margin-right: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
 }
