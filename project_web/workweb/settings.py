@@ -38,7 +38,7 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 #ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
-ALLOWED_HOSTS = ['ebay-support-system.onrender.com','localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['ebay-support-system1.onrender.com','localhost', '127.0.0.1']
 
 
 
@@ -97,7 +97,7 @@ WSGI_APPLICATION = 'workweb.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-import dj_database_url
+
 import os
 
 if os.getenv("DATABASE_URL"):  # 本番環境(Render/Herokuなど)
