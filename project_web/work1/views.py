@@ -454,44 +454,57 @@ class IndexView(View):
         return render(request, "work1/index.html", {"sheet_url": sheet_url, "auth_url": auth_url})
 
     def post(self, request):
+    try:
         url = request.POST.get('url')
         user_id = request.user.id
+        print("POST / called")
+        print("url:", url)
+        print("user_id:", user_id)
 
         if "mercari" in url:
             data = scrape_mercari(url)
+            print("scrape_mercari done")
             write_to_google_sheets(data, user_id, url, request, 1)
 
         elif "store.shopping.yahoo" in url:
             data = scrape_yahoo_shopping(url)
+            print("scrape_yahoo_shopping done")
             write_to_google_sheets(data, user_id, url, request, 2)
 
-        #paypayfleamarket.yahoo1とyahooの順番注意
         elif "paypayfleamarket.yahoo" in url:
             data = scrape_yahoo_hurima(url)
+            print("scrape_yahoo_hurima done")
             write_to_google_sheets(data, user_id, url, request, 2)
 
         elif "yahoo" in url:
             data = scrape_yahoo(url)
+            print("scrape_yahoo done")
             write_to_google_sheets(data, user_id, url, request, 2)
-                    
-
 
         elif "item.fril" in url:
             data = scrape_rakuma(url)
+            print("scrape_rakuma done")
             write_to_google_sheets(data, user_id, url, request, 3)
 
         elif "item.rakuten" in url:
             data = scrape_rakuten(url)
+            print("scrape_rakuten done")
             write_to_google_sheets(data, user_id, url, request, 3)
 
         elif "amazon" in url:
             data = scrape_amazon(url)
+            print("scrape_amazon done")
             write_to_google_sheets(data, user_id, url, request, 4)
 
-        
-        
+        else:
+            print("unknown url format:", url)
 
-        # スプレッドシートの最新のURLを取得してリダイレクト
         return redirect('/')
+
+    except Exception as e:
+        import traceback
+        print("IndexView.post error:", e)
+        traceback.print_exc()
+        raise
 
 index = IndexView.as_view()

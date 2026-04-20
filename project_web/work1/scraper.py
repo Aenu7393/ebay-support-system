@@ -1308,7 +1308,10 @@ def write_to_google_sheets(data, user_id, url, request, seet_num):
         print(f"行番号: {row_index}, 書き込みデータ: {data}")
 
     except Exception as e:
+        import traceback
         print(f"データ書き込みエラー: {e}")
+        traceback.print_exc()
+        raise
 
 
 
