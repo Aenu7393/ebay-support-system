@@ -1207,7 +1207,6 @@ def write_to_google_sheets(data, user_id, url, request, seet_num):
         print("spreadsheet_id", spreadsheet_id)
         sh = gc.open_by_key(spreadsheet_id)
 
-        sh.share('', perm_type='anyone', role='writer')
         print(f"スプレッドシートID: {spreadsheet_id} は「誰でも」編集可能に設定されました。")
 
         # 指定されたシート番号に基づいてシートを取得

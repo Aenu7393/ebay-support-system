@@ -46,7 +46,11 @@
 
     <!-- スプレッドシートの埋め込み -->
     
-    <iframe src="{{ sheet_url }}" width="100%" height="1000"></iframe>
+    {% if sheet_url %}
+  <iframe src="{{ sheet_url }}" width="100%" height="1000"></iframe>
+    {% else %}
+    <p>まだスプレッドシートは作成されていません。URLを入力して実行してください。</p>
+    {% endif %}
 
 </body>
 </html>
