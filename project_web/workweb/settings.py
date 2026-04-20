@@ -38,7 +38,7 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 #ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
-ALLOWED_HOSTS = ['anu-django-web1-a9f0b7d5d02e.herokuapp.com','localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['ebay-support-system.onrender.com','localhost', '127.0.0.1']
 
 
 
