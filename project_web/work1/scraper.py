@@ -4,14 +4,11 @@ import psycopg2
 import os
 import json
 import gspread
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
 from .models import Spreadsheet
 from datetime import datetime
 import time
@@ -21,7 +18,9 @@ import pytz  # 日本時間の処理に必要
 import requests
 from selenium.common.exceptions import NoSuchElementException
 from googleapiclient.discovery import build
-
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 
 def end_ebay_listing(item_id, access_token, reason="NotAvailable"):
     """
@@ -368,20 +367,20 @@ def kousinn(user_id, access_token):
 
 
 def scrape_mercari(url):
-    # URLのバリデーション
     if not url or not url.startswith("http"):
         print("無効なURL:", url)
         return None, None, None, None, None, "ステータスを取得できませんでした", []
 
     chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--remote-debugging-port=9222')
-    chrome_options.add_argument('--lang=ja-JP')
+    chrome_options.binary_location = "/usr/bin/chromium"
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--remote-debugging-port=9222")
+    chrome_options.add_argument("--lang=ja-JP")
 
-    service = Service(ChromeDriverManager().install())
+    service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
     title = price = condition = image_url = description = status = None
