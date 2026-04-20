@@ -40,7 +40,9 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 #ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 ALLOWED_HOSTS = ['ebay-support-system1.onrender.com','localhost', '127.0.0.1']
 
-
+CSRF_TRUSTED_ORIGINS = [
+    "https://ebay-support-system1.onrender.com",
+]
 
 
 INVITE_CODE = os.getenv("INVITE_CODE", "default_secure_code")
