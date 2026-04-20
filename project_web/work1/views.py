@@ -13,7 +13,7 @@ from datetime import timedelta
 from .models import eBayAuthToken
 import uuid
 import threading
-
+import os
 
 #出品サイトへ
 
