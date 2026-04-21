@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 #後で消す
 # SECRET_KEY = os.getenv('SECRET_KEY', '-&#80g$o8#3h+3fa97z5cs+a%u)=rsc57h$w)g3*ws4cs04333')
-SECRET_KEY = os.environ["SECRET_KEY"]
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-build-only-key")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
