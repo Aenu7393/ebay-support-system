@@ -2,14 +2,30 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>登録</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サインアップ</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'workweb/css/signup-css.css' %}">
 </head>
 <body>
-    <h1>サインアップ</h1>
-    <form method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">登録</button>
-    </form>
+    <div class="signup-page">
+        <div class="signup-card">
+            <div class="signup-header">
+                <h1>サインアップ</h1>
+                <p>新しいアカウントを作成してサービスを始めましょう</p>
+            </div>
+
+            <form method="POST" class="signup-form">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="signup-submit-button">登録する</button>
+            </form>
+
+            <div class="login-section">
+                <p>すでにアカウントをお持ちの方</p>
+                <a href="{% url 'login' %}" class="login-link-button">ログイン</a>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
