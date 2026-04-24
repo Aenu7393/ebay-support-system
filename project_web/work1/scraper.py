@@ -11,7 +11,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 from .models import Spreadsheet
-from datetime import datetime
 import time
 import xmltodict
 from datetime import datetime, timedelta
@@ -22,6 +21,51 @@ from googleapiclient.discovery import build
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+
+
+
+def save_scraping_failure(site_name, url, field_name, selectors, driver):
+    """
+    スクレイピング失敗時に、
+    URL・失敗項目・試したセレクタ・HTMLを保存する。
+    """
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    failure_dir = Path(__file__).resolve().parent / "scraping_failures"
+    failure_dir.mkdir(exist_ok=True)
+
+    base_name = f"{site_name}_{timestamp}_{field_name}"
+
+    html_path = failure_dir / f"{base_name}.html"
+    json_path = failure_dir / f"{base_name}.json"
+
+    # HTMLを保存
+    try:
+        html_path.write_text(driver.page_source, encoding="utf-8")
+    except Exception as e:
+        print(f"HTML保存に失敗しました: {e}")
+
+    # メタ情報を保存
+    failure_info = {
+        "site_name": site_name,
+        "url": url,
+        "field_name": field_name,
+        "selectors_tried": selectors,
+        "html_file": str(html_path.name),
+        "created_at": timestamp
+    }
+
+    try:
+        json_path.write_text(
+            json.dumps(failure_info, ensure_ascii=False, indent=2),
+            encoding="utf-8"
+        )
+    except Exception as e:
+        print(f"失敗情報JSONの保存に失敗しました: {e}")
+
+    print(f"スクレイピング失敗情報を保存しました: {json_path}")
+
 
 def load_selectors():#selectors_config.json を読み込む関数
     config_path = Path(__file__).resolve().parent / "selectors_config.json"
@@ -467,29 +511,66 @@ def scrape_mercari(url):
         title = get_text_by_selectors(driver, selectors["title"])
         if not title:
             print("タイトルの取得に失敗しました。")
+            save_scraping_failure(
+                site_name="mercari",
+                url=url,
+                field_name="title",
+                selectors=selectors["title"],
+                driver=driver
+            )
 
         # 価格
         price = get_text_by_selectors(driver, selectors["price"])
         if not price:
             print("価格の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="mercari",
+                url=url,
+                field_name="price",
+                selectors=selectors["price"],
+                driver=driver
+            )
 
         # 商品状態
         condition = get_text_by_selectors(driver, selectors["condition"])
         if not condition:
             print("商品の状態の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="mercari",
+                url=url,
+                field_name="condition",
+                selectors=selectors["condition"],
+                driver=driver
+            )
 
         # メイン画像
         image_url = get_attribute_by_selectors(driver, selectors["image_url"], "src")
+
         if not image_url:
             image_url = get_attribute_by_selectors(driver, selectors["image_url"], "content")
 
         if not image_url:
             print("画像URLの取得に失敗しました。")
+            save_scraping_failure(
+                site_name="mercari",
+                url=url,
+                field_name="image_url",
+                selectors=selectors["image_url"],
+                driver=driver
+            )
+
 
         # 説明文
         description = get_text_by_selectors(driver, selectors["description"])
         if not description:
             print("商品の説明の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="mercari",
+                url=url,
+                field_name="description",
+                selectors=selectors["description"],
+                driver=driver
+            )
 
         # すべての画像URL
         images_urls = []
@@ -497,27 +578,58 @@ def scrape_mercari(url):
             images_urls = get_attributes_by_selector(driver, selector, "src")
             if images_urls:
                 break
-
         if not images_urls:
             print("複数画像URLの取得に失敗しました。")
+            save_scraping_failure(
+                site_name="mercari",
+                url=url,
+                field_name="images",
+                selectors=selectors["images"],
+                driver=driver
+            )
+
 
         # 在庫ステータス
         status = "在庫あり"
+        sold_out_found = False
 
         try:
-            thumbnails = driver.find_elements(By.CSS_SELECTOR, selectors["sold_out"][0])
+            for selector in selectors["sold_out"]:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
 
-            for thumbnail in thumbnails:
-                aria_label = thumbnail.get_attribute("aria-label")
-                print(f"取得したaria-label: {aria_label}")
+                if not elements:
+                    continue
 
-                if aria_label == "売り切れ":
-                    status = "売り切れ"
+                for element in elements:
+                    aria_label = element.get_attribute("aria-label")
+                    alt = element.get_attribute("alt")
+                    text = element.text
+
+                    print(f"在庫確認: selector={selector}, aria-label={aria_label}, alt={alt}, text={text}")
+
+                    if (
+                        aria_label == "売り切れ"
+                        or alt == "sold"
+                        or "売り切れ" in (text or "")
+                        or "SOLD" in (text or "")
+                    ):
+                        status = "売り切れ"
+                        sold_out_found = True
+                        break
+
+                if sold_out_found:
                     break
 
-        except Exception:
-            print("在庫ステータスの取得に失敗しました。")
+        except Exception as e:
+            print(f"在庫ステータスの取得に失敗しました: {e}")
             status = "ステータスを取得できませんでした"
+            save_scraping_failure(
+                site_name="mercari",
+                url=url,
+                field_name="status",
+                selectors=selectors["sold_out"],
+                driver=driver
+            )
 
     except Exception as e:
         print(f"致命的なエラーが発生しました: {e}")
