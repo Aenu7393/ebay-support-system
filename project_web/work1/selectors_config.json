@@ -1,0 +1,34 @@
+{
+  "mercari": {
+    "title": [
+      "h1.heading__a7d91561 page__a7d91561",
+      "h1",
+      "meta[property='og:title']"
+    ],
+    "price": [
+      "div[data-testid='product-price']",
+      "div[data-testid='price']",
+      "div.sc-c5724afb-0.feUXIG",
+      "meta[property='product:price:amount']"
+    ],
+    "condition": [
+      "span[data-testid='商品の状態']"
+    ],
+    "image_url": [
+      "meta[property='og:image']",
+      "img"
+    ],
+    "description": [
+      "pre[data-testid='description']",
+      "meta[property='og:description']"
+    ],
+    "images": [
+      "div.slick-track img"
+    ],
+    "sold_out": [
+      "div.merItemThumbnail.fluid__a6f874a2",
+      "[aria-label='売り切れ']",
+      "img[alt='sold']"
+    ]
+  }
+}

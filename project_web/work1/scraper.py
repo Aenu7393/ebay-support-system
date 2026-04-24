@@ -4,6 +4,7 @@ import psycopg2
 import os
 import json
 import gspread
+from pathlib import Path
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -21,6 +22,78 @@ from googleapiclient.discovery import build
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+
+def load_selectors():#selectors_config.json を読み込む関数
+    config_path = Path(__file__).resolve().parent / "selectors_config.json"
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def get_text_by_selectors(driver, selectors, timeout=5):
+    """
+    複数のCSSセレクタを順番に試して、最初に取得できたテキストを返す。
+    """
+    for selector in selectors:
+        try:
+            element = WebDriverWait(driver, timeout).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+            )
+
+            # metaタグの場合は content 属性を見る
+            if element.tag_name == "meta":
+                value = element.get_attribute("content")
+            else:
+                value = element.text
+
+            if value and value.strip():
+                return value.strip()
+
+        except Exception:
+            continue
+
+    return None
+
+#画像URL用
+def get_attribute_by_selectors(driver, selectors, attribute_name, timeout=5):
+    """
+    複数のCSSセレクタを順番に試して、最初に取得できた属性値を返す。
+    """
+    for selector in selectors:
+        try:
+            element = WebDriverWait(driver, timeout).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+            )
+
+            value = element.get_attribute(attribute_name)
+
+            if value and value.strip():
+                return value.strip()
+
+        except Exception:
+            continue
+
+    return None
+
+
+#複数画像用
+def get_attributes_by_selector(driver, selector, attribute_name):
+    """
+    指定したCSSセレクタに一致する複数要素から属性値を取得する。
+    """
+    try:
+        elements = driver.find_elements(By.CSS_SELECTOR, selector)
+        values = []
+
+        for element in elements:
+            value = element.get_attribute(attribute_name)
+            if value:
+                values.append(value)
+
+        return values
+
+    except Exception:
+        return []
+
 
 def end_ebay_listing(item_id, access_token, reason="NotAvailable"):
     """
@@ -365,11 +438,12 @@ def kousinn(user_id, access_token):
 
 
 
-
 def scrape_mercari(url):
     if not url or not url.startswith("http"):
         print("無効なURL:", url)
         return None, None, None, None, None, "ステータスを取得できませんでした", []
+
+    selectors = load_selectors()["mercari"]
 
     chrome_options = Options()
     chrome_options.binary_location = "/usr/bin/chromium"
@@ -390,114 +464,66 @@ def scrape_mercari(url):
         driver.get(url)
 
         # 商品タイトル
-        try:
-            title = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'h1.heading__a7d91561.page__a7d91561'))
-            ).text
-        except TimeoutException:
+        title = get_text_by_selectors(driver, selectors["title"])
+        if not title:
             print("タイトルの取得に失敗しました。")
 
-        # 価格（2段階）
-            # 価格の取得（3段階フォールバック）
-        try:
-            # 第一候補
-            price_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-testid="product-price"]'))
-            )
-            spans = price_element.find_elements(By.TAG_NAME, 'span')
-            if len(spans) >= 2:
-                price_currency = spans[0].text
-                price_value = spans[1].text
-                price = price_currency + price_value
-            else:
-                price = price_element.text
-        except TimeoutException:
-            print("第一候補で価格を取得できませんでした。第二候補を試します。")
-            try:
-                # 第二候補
-                price_element = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-testid="price"]'))
-                )
-                spans = price_element.find_elements(By.TAG_NAME, 'span')
-                if len(spans) >= 2:
-                    price_currency = spans[0].text
-                    price_value = spans[1].text
-                    price = price_currency + price_value
-                else:
-                    price = price_element.text
-            except TimeoutException:
-                print("第二候補でも価格を取得できませんでした。第三候補を試します。")
-                try:
-                    # 第三候補（クラス名で直接探す）
-                    price_element = WebDriverWait(driver, 5).until(
-                        EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, 'div.sc-c5724afb-0.feUXIG'))
-                    )
-                    spans = price_element.find_elements(By.TAG_NAME, 'span')
-                    if len(spans) >= 2:
-                        price_currency = spans[0].text
-                        price_value = spans[1].text
-                        price = price_currency + price_value
-                    else:
-                        price = price_element.text
-                except TimeoutException:
-                    print("第三候補でも価格を取得できませんでした。")
-                    price = None
+        # 価格
+        price = get_text_by_selectors(driver, selectors["price"])
+        if not price:
+            print("価格の取得に失敗しました。")
 
-        # 状態
-        try:
-            condition = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'span[data-testid="商品の状態"]'))
-            ).text
-        except TimeoutException:
+        # 商品状態
+        condition = get_text_by_selectors(driver, selectors["condition"])
+        if not condition:
             print("商品の状態の取得に失敗しました。")
 
         # メイン画像
-        try:
-            image_url = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'img'))
-            ).get_attribute('src')
-        except TimeoutException:
+        image_url = get_attribute_by_selectors(driver, selectors["image_url"], "src")
+        if not image_url:
+            image_url = get_attribute_by_selectors(driver, selectors["image_url"], "content")
+
+        if not image_url:
             print("画像URLの取得に失敗しました。")
 
         # 説明文
-        try:
-            description = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'pre[data-testid="description"]'))
-            ).text
-        except TimeoutException:
+        description = get_text_by_selectors(driver, selectors["description"])
+        if not description:
             print("商品の説明の取得に失敗しました。")
 
         # すべての画像URL
-        try:
-            slick_track = driver.find_element(By.CSS_SELECTOR, 'div.slick-track')
-            images = slick_track.find_elements(By.CSS_SELECTOR, 'img')
-            images_urls = [img.get_attribute('src') for img in images]
-        except NoSuchElementException:
-            print("slick-trackが見つかりませんでした。")
+        images_urls = []
+        for selector in selectors["images"]:
+            images_urls = get_attributes_by_selector(driver, selector, "src")
+            if images_urls:
+                break
+
+        if not images_urls:
+            print("複数画像URLの取得に失敗しました。")
 
         # 在庫ステータス
+        status = "在庫あり"
+
         try:
-            thumbnails = WebDriverWait(driver, 10).until(
-                EC.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR, 'div.merItemThumbnail.fluid__a6f874a2')
-                )
-            )
-            status = "在庫あり"
+            thumbnails = driver.find_elements(By.CSS_SELECTOR, selectors["sold_out"][0])
+
             for thumbnail in thumbnails:
-                aria_label = thumbnail.get_attribute('aria-label')
+                aria_label = thumbnail.get_attribute("aria-label")
                 print(f"取得したaria-label: {aria_label}")
+
                 if aria_label == "売り切れ":
                     status = "売り切れ"
                     break
-        except TimeoutException:
-            print("ステータス情報の取得に失敗しました。")
+
+        except Exception:
+            print("在庫ステータスの取得に失敗しました。")
             status = "ステータスを取得できませんでした"
 
     except Exception as e:
         print(f"致命的なエラーが発生しました: {e}")
         title, price, condition, image_url, description, status, images_urls = (
-            None, None, None, None, None, "ステータスを取得できませんでした", [])
+            None, None, None, None, None, "ステータスを取得できませんでした", []
+        )
 
     finally:
         driver.quit()
