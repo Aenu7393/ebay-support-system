@@ -642,8 +642,9 @@ def scrape_mercari(url):
 
     return title, price, condition, image_url, description, status, images_urls
 
-
 def scrape_yahoo(url):
+    selectors = load_selectors()["yahoo"]
+
     chrome_options = Options()
     chrome_options.add_argument('--headless')
     chrome_options.add_argument('--disable-gpu')
@@ -655,63 +656,133 @@ def scrape_yahoo(url):
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
-    driver.get(url)
+    title = price = condition = image_url = description = status = None
+    images_urls = []
 
     try:
+        driver.get(url)
+
         # オークション終了の確認
+        status = "在庫あり"
+
         try:
-            closed_element = driver.find_element(By.ID, 'closedHeader')
-            status = "在庫なし"  # オークションが終了している場合
-        except NoSuchElementException:
-            status = "在庫あり"  # オークションが終了していない場合
+            closed_found = False
 
-        # 商品タイトルを取得
-        title = WebDriverWait(driver, 2).until(
-            EC.presence_of_element_located((By.CLASS_NAME, 'ProductTitle__text'))
-        ).text
+            for selector in selectors["closed"]:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
 
-        # 価格を取得
-        price_element = WebDriverWait(driver, 2).until(
-            EC.presence_of_element_located((By.CLASS_NAME, 'Price__value'))
-        )
-        price = price_element.text.split("\n")[0]  # 価格部分のみ取得
+                if elements:
+                    closed_found = True
+                    break
 
-        # 商品の状態を取得
-        condition_element = WebDriverWait(driver, 2).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'a[data-cl-params^="_cl_vmodule:cndtn"]'))
-        )
-        condition = condition_element.text
+            if closed_found:
+                status = "在庫なし"
 
-        # 画像URLを取得
-        image_url = WebDriverWait(driver, 2).until(
-            EC.presence_of_element_located((By.CLASS_NAME, 'ProductImage__inner img'))
-        ).get_attribute('src')
+        except Exception as e:
+            print(f"オークション終了確認に失敗しました: {e}")
+            status = "ステータスを取得できませんでした"
+            save_scraping_failure(
+                site_name="yahoo",
+                url=url,
+                field_name="status",
+                selectors=selectors["closed"],
+                driver=driver
+            )
 
-        # 商品説明を取得
-        description = WebDriverWait(driver, 2).until(
-            EC.presence_of_element_located((By.CLASS_NAME, 'ProductExplanation__commentBody'))
-        ).text
-        
+        # 商品タイトル
+        title = get_text_by_selectors(driver, selectors["title"], timeout=5)
 
-        # 商品画像URLをすべて取得（特定の `<li>` を除外）
-        try:
-            # `<ul class="ProductImage__images">` 内の `<li>` タグを取得（除外条件付き）
-            ul_element = driver.find_element(By.CSS_SELECTOR, 'ul.ProductImage__images')
-            li_elements = ul_element.find_elements(By.CSS_SELECTOR, 'li.ProductImage__image:not(.is-clone-right-01)')
+        if not title:
+            print("商品タイトルの取得に失敗しました。")
+            save_scraping_failure(
+                site_name="yahoo",
+                url=url,
+                field_name="title",
+                selectors=selectors["title"],
+                driver=driver
+            )
 
-            # `<img>` タグをすべて取得
-            images_urls = []
-            for li in li_elements:
-                img_element = li.find_element(By.CSS_SELECTOR, 'div.ProductImage__inner img')
-                images_urls.append(img_element.get_attribute('src'))
-        except TimeoutException:
+        # 価格
+        price = get_text_by_selectors(driver, selectors["price"], timeout=5)
+
+        if price:
+            price = price.split("\n")[0]
+        else:
+            print("価格の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="yahoo",
+                url=url,
+                field_name="price",
+                selectors=selectors["price"],
+                driver=driver
+            )
+
+        # 商品の状態
+        condition = get_text_by_selectors(driver, selectors["condition"], timeout=5)
+
+        if not condition:
+            print("商品の状態の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="yahoo",
+                url=url,
+                field_name="condition",
+                selectors=selectors["condition"],
+                driver=driver
+            )
+
+        # メイン画像URL
+        image_url = get_attribute_by_selectors(driver, selectors["image_url"], "src", timeout=5)
+
+        if not image_url:
+            image_url = get_attribute_by_selectors(driver, selectors["image_url"], "content", timeout=5)
+
+        if not image_url:
+            print("画像URLの取得に失敗しました。")
+            save_scraping_failure(
+                site_name="yahoo",
+                url=url,
+                field_name="image_url",
+                selectors=selectors["image_url"],
+                driver=driver
+            )
+
+        # 商品説明
+        description = get_text_by_selectors(driver, selectors["description"], timeout=5)
+
+        if not description:
+            print("商品説明の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="yahoo",
+                url=url,
+                field_name="description",
+                selectors=selectors["description"],
+                driver=driver
+            )
+
+        # 商品画像URLをすべて取得
+        images_urls = []
+
+        for selector in selectors["images"]:
+            images_urls = get_attributes_by_selector(driver, selector, "src")
+
+            if images_urls:
+                break
+
+        if not images_urls:
             print("商品の画像URLの取得に失敗しました。")
-            images_urls = None
+            save_scraping_failure(
+                site_name="yahoo",
+                url=url,
+                field_name="images",
+                selectors=selectors["images"],
+                driver=driver
+            )
 
-
-    except TimeoutException:
-        print("要素の取得に失敗しました。")
-        title, price, condition, image_url, description, status ,images_urls= None, None, None, None, None, None, None
+    except Exception as e:
+        print(f"Yahooスクレイピング中に致命的なエラーが発生しました: {e}")
+        title, price, condition, image_url, description, status, images_urls = (
+            None, None, None, None, None, "ステータスを取得できませんでした", []
+        )
 
     finally:
         driver.quit()

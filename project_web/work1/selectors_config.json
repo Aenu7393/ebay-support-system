@@ -30,5 +30,42 @@
       "[aria-label='売り切れ']",
       "img[alt='sold']"
     ]
+  },
+
+  "yahoo": {
+    "closed": [
+      "#closedHeader"
+    ],
+    "title": [
+      ".ProductTitle__text",
+      "h1",
+      "meta[property='og:title']"
+    ],
+    "price": [
+      ".Price__value",
+      "dd.Price__value",
+      "[class*='Price__value']",
+      "meta[property='product:price:amount']"
+    ],
+    "condition": [
+      "a[data-cl-params^='_cl_vmodule:cndtn']",
+      "[class*='Condition']",
+      "meta[property='product:condition']"
+    ],
+    "image_url": [
+      ".ProductImage__inner img",
+      "meta[property='og:image']",
+      "img"
+    ],
+    "description": [
+      ".ProductExplanation__commentBody",
+      "[class*='ProductExplanation']",
+      "meta[property='og:description']"
+    ],
+    "images": [
+      "ul.ProductImage__images li.ProductImage__image:not(.is-clone-right-01) div.ProductImage__inner img",
+      "ul.ProductImage__images img",
+      ".ProductImage__inner img"
+    ]
   }
 }
