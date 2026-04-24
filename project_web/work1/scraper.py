@@ -791,101 +791,167 @@ def scrape_yahoo(url):
 
 
 def scrape_yahoo_hurima(url):
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--remote-debugging-port=9222')
-    chrome_options.add_argument('--lang=ja-JP')
+    if not url or not url.startswith("http"):
+        print("無効なURL:", url)
+        return None, None, None, None, None, "ステータスを取得できませんでした", []
 
-    service = Service(ChromeDriverManager().install())
+    selectors = load_selectors()["yahoo_hurima"]
+
+    chrome_options = Options()
+    chrome_options.binary_location = "/usr/bin/chromium"
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--remote-debugging-port=9222")
+    chrome_options.add_argument("--lang=ja-JP")
+
+    service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
-    driver.get(url)
-
-    title = price = condition = image_url = description = status = images_urls = None
+    title = price = condition = image_url = description = status = None
+    images_urls = []
 
     try:
-        try:
-            # 売り切れ判定処理
-            sold_images = driver.find_elements(By.CSS_SELECTOR, 'img[alt="sold"]')
+        driver.get(url)
 
-            # 売り切れ画像が存在し、かつ表示されているかを確認
-            if any(img.is_displayed() for img in sold_images):
-                status = "売り切れ"
-            else:
-                status = "在庫あり"
-        except NoSuchElementException:
-            status = "在庫あり"
-
-    #     try:
-    # # 適切な範囲で `img[alt="sold"]` を取得
-    #         sold_images = driver.find_elements(By.CSS_SELECTOR, '.sc-7fc76147-1 img[alt="sold"]')
-
-    #         # 表示されている売り切れ画像があるかチェック
-    #         if any(img.is_displayed() for img in sold_images):
-    #             status = "売り切れ"
-    #         else:
-    #             status = "在庫あり"
-    #     except NoSuchElementException:
-    #         status = "在庫あり"
-        # 商品タイトルを取得
-        try:
-            title = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'h1.sc-7b08a9bb-0 span'))
-            ).text
-        except TimeoutException:
+        # 商品タイトル
+        title = get_text_by_selectors(driver, selectors["title"])
+        if not title:
             print("タイトルの取得に失敗しました。")
-
-        # 価格を取得
-        try:
-            price_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'span.sc-c8f146f8-0 span.gjEqBV'))
+            save_scraping_failure(
+                site_name="yahoo_hurima",
+                url=url,
+                field_name="title",
+                selectors=selectors["title"],
+                driver=driver
             )
-            price = price_element.text + "円"
-        except TimeoutException:
+
+        # 価格
+        price = get_text_by_selectors(driver, selectors["price"])
+        if price and not price.endswith("円"):
+            price = price + "円"
+
+        if not price:
             print("価格の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="yahoo_hurima",
+                url=url,
+                field_name="price",
+                selectors=selectors["price"],
+                driver=driver
+            )
 
-        # 商品の状態を取得
-        try:
-            condition = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'td.sc-227e83e5-3 span'))
-            ).text
-        except TimeoutException:
+        # 商品状態
+        condition = get_text_by_selectors(driver, selectors["condition"])
+        if not condition:
             print("商品の状態の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="yahoo_hurima",
+                url=url,
+                field_name="condition",
+                selectors=selectors["condition"],
+                driver=driver
+            )
 
-        # メイン画像URLを取得
-        try:
-            image_url = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.slick-slide.slick-active img'))
-            ).get_attribute('src')
-        except TimeoutException:
-            print("メイン画像URLの取得に失敗しました。")
+        # メイン画像
+        image_url = get_attribute_by_selectors(driver, selectors["image_url"], "src")
 
-        # 商品説明を取得
-        try:
-            description = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.ItemText__Text span'))
-            ).text
-        except TimeoutException:
+        if not image_url:
+            image_url = get_attribute_by_selectors(driver, selectors["image_url"], "content")
+
+        if not image_url:
+            print("画像URLの取得に失敗しました。")
+            save_scraping_failure(
+                site_name="yahoo_hurima",
+                url=url,
+                field_name="image_url",
+                selectors=selectors["image_url"],
+                driver=driver
+            )
+
+        # 説明文
+        description = get_text_by_selectors(driver, selectors["description"])
+        if not description:
             print("商品の説明の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="yahoo_hurima",
+                url=url,
+                field_name="description",
+                selectors=selectors["description"],
+                driver=driver
+            )
 
-        # 商品画像URLをすべて取得（特定の `<li>` を除外）
+        # すべての画像URL
+        images_urls = []
+        for selector in selectors["images"]:
+            images_urls = get_attributes_by_selector(driver, selector, "src")
+            if images_urls:
+                # 重複削除
+                images_urls = list(dict.fromkeys(images_urls))
+                break
+
+        if not images_urls:
+            print("複数画像URLの取得に失敗しました。")
+            save_scraping_failure(
+                site_name="yahoo_hurima",
+                url=url,
+                field_name="images",
+                selectors=selectors["images"],
+                driver=driver
+            )
+
+        # 在庫ステータス
+        status = "在庫あり"
+        sold_out_found = False
+
         try:
-            ul_element = driver.find_element(By.CSS_SELECTOR, 'div.slick-track')
-            li_elements = ul_element.find_elements(By.CSS_SELECTOR, 'div[data-index]:not([data-index="-1"])')
+            for selector in selectors["sold_out"]:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
 
-            images_urls = []
-            for li in li_elements:
-                img_element = li.find_element(By.CSS_SELECTOR, 'img')
-                images_urls.append(img_element.get_attribute('src'))
-        except TimeoutException:
-            print("商品の画像URLの取得に失敗しました。")
-            images_urls = None
+                if not elements:
+                    continue
+
+                for element in elements:
+                    aria_label = element.get_attribute("aria-label")
+                    alt = element.get_attribute("alt")
+                    text = element.text
+
+                    print(
+                        f"在庫確認: selector={selector}, "
+                        f"aria-label={aria_label}, alt={alt}, text={text}"
+                    )
+
+                    if (
+                        aria_label == "売り切れ"
+                        or alt == "sold"
+                        or "売り切れ" in (text or "")
+                        or "SOLD" in (text or "")
+                        or "sold" in (alt or "").lower()
+                    ):
+                        status = "売り切れ"
+                        sold_out_found = True
+                        break
+
+                if sold_out_found:
+                    break
+
+        except Exception as e:
+            print(f"在庫ステータスの取得に失敗しました: {e}")
+            status = "ステータスを取得できませんでした"
+            save_scraping_failure(
+                site_name="yahoo_hurima",
+                url=url,
+                field_name="status",
+                selectors=selectors["sold_out"],
+                driver=driver
+            )
 
     except Exception as e:
-        print(f"要素の取得中にエラーが発生しました: {e}")
+        print(f"致命的なエラーが発生しました: {e}")
+        title, price, condition, image_url, description, status, images_urls = (
+            None, None, None, None, None, "ステータスを取得できませんでした", []
+        )
 
     finally:
         driver.quit()
@@ -895,95 +961,167 @@ def scrape_yahoo_hurima(url):
 
 
 def scrape_yahoo_shopping(url):
-    # Seleniumのオプション設定
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--remote-debugging-port=9222')
-    chrome_options.add_argument('--lang=ja-JP')
+    if not url or not url.startswith("http"):
+        print("無効なURL:", url)
+        return None, None, None, None, None, "ステータスを取得できませんでした", []
 
-    # ChromeDriverを初期化
-    service = Service(ChromeDriverManager().install())
+    selectors = load_selectors()["yahoo_shopping"]
+
+    chrome_options = Options()
+    chrome_options.binary_location = "/usr/bin/chromium"
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--remote-debugging-port=9222")
+    chrome_options.add_argument("--lang=ja-JP")
+
+    service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
-    # デフォルト値の設定
     title = price = condition = image_url = description = stock_status = None
     all_image_urls = []
 
     try:
-        # ページを開く
         driver.get(url)
 
-        # 商品名を取得
-        try:
-            title = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.styles_itemName__Cf_Kt.styles_itemName__tCTR2 p.styles_name__u228e'))
-            ).text
-        except TimeoutException:
+        # 商品名
+        title = get_text_by_selectors(driver, selectors["title"])
+        if not title:
             print("商品名の取得に失敗しました。")
-            title = None
-
-        # 価格を取得
-        try:
-            price_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.styles_priceWrap__LAAeb p.styles_price__7WGwS'))
+            save_scraping_failure(
+                site_name="yahoo_shopping",
+                url=url,
+                field_name="title",
+                selectors=selectors["title"],
+                driver=driver
             )
-            price = price_element.text.split("円")[0] + "円"  # 価格を整形
-        except TimeoutException:
+
+        # 価格
+        price = get_text_by_selectors(driver, selectors["price"])
+        if price:
+            price = price.split("円")[0] + "円"
+
+        if not price:
             print("価格の取得に失敗しました。")
-            price = None
-
-        # 商品の状態を取得
-        try:
-            condition_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.styles_itemName__Cf_Kt.styles_itemName__tCTR2 p.styles_itemType__rcD2w'))
+            save_scraping_failure(
+                site_name="yahoo_shopping",
+                url=url,
+                field_name="price",
+                selectors=selectors["price"],
+                driver=driver
             )
-            condition = condition_element.text
-        except TimeoutException:
+
+        # 商品の状態
+        condition = get_text_by_selectors(driver, selectors["condition"])
+        if not condition:
             print("商品の状態の取得に失敗しました。")
-            condition = None
-
-        # 画像URL（一枚目）を取得
-        try:
-            image_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'li.splide__slide.is-active img.styles_image__Q5O03'))
+            save_scraping_failure(
+                site_name="yahoo_shopping",
+                url=url,
+                field_name="condition",
+                selectors=selectors["condition"],
+                driver=driver
             )
-            image_url = image_element.get_attribute('src')
-        except TimeoutException:
+
+        # メイン画像URL
+        image_url = get_attribute_by_selectors(driver, selectors["image_url"], "src")
+
+        if not image_url:
+            image_url = get_attribute_by_selectors(driver, selectors["image_url"], "content")
+
+        if not image_url:
             print("画像URL（一枚目）の取得に失敗しました。")
-            image_url = None
-
-        # 全ての画像URLを取得
-        try:
-            ul_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'ul.splide__list'))
+            save_scraping_failure(
+                site_name="yahoo_shopping",
+                url=url,
+                field_name="image_url",
+                selectors=selectors["image_url"],
+                driver=driver
             )
-            li_elements = ul_element.find_elements(By.CSS_SELECTOR, 'li.splide__slide')
-            for li in li_elements:
-                img_element = li.find_element(By.CSS_SELECTOR, 'img.styles_image__Q5O03')
-                all_image_urls.append(img_element.get_attribute('src'))
-        except TimeoutException:
+
+        # すべての画像URL
+        all_image_urls = []
+        for selector in selectors["images"]:
+            all_image_urls = get_attributes_by_selector(driver, selector, "src")
+            if all_image_urls:
+                all_image_urls = list(dict.fromkeys(all_image_urls))
+                break
+
+        if not all_image_urls:
             print("全ての画像URLの取得に失敗しました。")
-            all_image_urls = []
+            save_scraping_failure(
+                site_name="yahoo_shopping",
+                url=url,
+                field_name="images",
+                selectors=selectors["images"],
+                driver=driver
+            )
 
-        # 在庫状況を取得
+        # 在庫状況
+        stock_status = "在庫あり"
+        sold_out_found = False
+
         try:
-            stock_element = driver.find_element(By.CSS_SELECTOR, 'div.text-display--1Iony.color-crimson--_Y7TS')
-            if "売り切れ" in stock_element.text:
-                stock_status = "売り切れ"
-            else:
-                stock_status = "在庫あり"
-        except NoSuchElementException:
-            print("在庫状況の取得に失敗しました。")
-            stock_status = None
+            for selector in selectors["sold_out"]:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
 
-        # 商品説明（仮でNoneに設定）
-        description = None
+                if not elements:
+                    continue
+
+                for element in elements:
+                    aria_label = element.get_attribute("aria-label")
+                    alt = element.get_attribute("alt")
+                    text = element.text
+
+                    print(
+                        f"在庫確認: selector={selector}, "
+                        f"aria-label={aria_label}, alt={alt}, text={text}"
+                    )
+
+                    if (
+                        aria_label == "売り切れ"
+                        or alt == "sold"
+                        or "売り切れ" in (text or "")
+                        or "在庫なし" in (text or "")
+                        or "SOLD" in (text or "")
+                        or "sold" in (alt or "").lower()
+                    ):
+                        stock_status = "売り切れ"
+                        sold_out_found = True
+                        break
+
+                if sold_out_found:
+                    break
+
+        except Exception as e:
+            print(f"在庫状況の取得に失敗しました: {e}")
+            stock_status = "ステータスを取得できませんでした"
+            save_scraping_failure(
+                site_name="yahoo_shopping",
+                url=url,
+                field_name="status",
+                selectors=selectors["sold_out"],
+                driver=driver
+            )
+
+        # 商品説明
+        description = get_text_by_selectors(driver, selectors["description"])
+        if not description:
+            print("商品の説明の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="yahoo_shopping",
+                url=url,
+                field_name="description",
+                selectors=selectors["description"],
+                driver=driver
+            )
 
     except Exception as e:
         print(f"スクレイピング中にエラーが発生しました: {e}")
+        title, price, condition, image_url, description, stock_status, all_image_urls = (
+            None, None, None, None, None, "ステータスを取得できませんでした", []
+        )
 
     finally:
         driver.quit()
@@ -993,91 +1131,170 @@ def scrape_yahoo_shopping(url):
 
 
 def scrape_rakuma(url):
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--remote-debugging-port=9222')
-    chrome_options.add_argument('--lang=ja-JP')
+    if not url or not url.startswith("http"):
+        print("無効なURL:", url)
+        return None, None, None, None, None, "ステータスを取得できませんでした", []
 
-    service = Service(ChromeDriverManager().install())
+    selectors = load_selectors()["rakuma"]
+
+    chrome_options = Options()
+    chrome_options.binary_location = "/usr/bin/chromium"
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--remote-debugging-port=9222")
+    chrome_options.add_argument("--lang=ja-JP")
+
+    service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
-    driver.get(url)
-
-    # デフォルト値を設定
     title = price = condition = image_url = description = status = None
+    images_urls = []
 
     try:
-        # 商品名を取得
-        try:
-            title_element = WebDriverWait(driver, 10).until(
-                EC.visibility_of_element_located((By.CLASS_NAME, 'item__name'))
-            )
-            title = title_element.text
-        except TimeoutException:
+        driver.get(url)
+
+        # 商品名
+        title = get_text_by_selectors(driver, selectors["title"])
+        if not title:
             print("商品名の取得に失敗しました。")
-
-        # 価格を取得
-        try:
-            price_currency = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CLASS_NAME, 'item__currency-symbol'))
-            ).text
-            price_value = driver.find_element(By.CLASS_NAME, 'item__price').text
-            price = price_currency + price_value
-        except TimeoutException:
-            print("価格の取得に失敗しました。")
-
-        # 商品の状態を取得
-        try:
-            # ラベルを含む行を取得
-            condition_row = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'table.item__details th'))
+            save_scraping_failure(
+                site_name="rakuma",
+                url=url,
+                field_name="title",
+                selectors=selectors["title"],
+                driver=driver
             )
 
-            # ラベルの隣にある値を取得
-            condition_value = condition_row.find_element(By.XPATH, '../td').text.strip()
-            condition = f"商品の状態: {condition_value}"
-            print(f"商品の状態: {condition}")
-        except TimeoutException:
+        # 価格
+        price = get_text_by_selectors(driver, selectors["price"])
+        if price and not price.startswith("¥") and not price.startswith("￥"):
+            price = "¥" + price
+
+        if not price:
+            print("価格の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="rakuma",
+                url=url,
+                field_name="price",
+                selectors=selectors["price"],
+                driver=driver
+            )
+
+        # 商品の状態
+        condition = get_text_by_selectors(driver, selectors["condition"])
+        if condition:
+            condition = f"商品の状態: {condition}"
+
+        if not condition:
             print("商品の状態の取得に失敗しました。")
-            condition = None
+            save_scraping_failure(
+                site_name="rakuma",
+                url=url,
+                field_name="condition",
+                selectors=selectors["condition"],
+                driver=driver
+            )
 
+        # メイン画像URL
+        image_url = get_attribute_by_selectors(driver, selectors["image_url"], "src")
 
-        # 写真URLを取得
-        try:
-            image_url = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.sp-image-container > img'))
-            ).get_attribute('src')
-        except TimeoutException:
+        if not image_url:
+            image_url = get_attribute_by_selectors(driver, selectors["image_url"], "content")
+
+        if not image_url:
             print("写真URLの取得に失敗しました。")
+            save_scraping_failure(
+                site_name="rakuma",
+                url=url,
+                field_name="image_url",
+                selectors=selectors["image_url"],
+                driver=driver
+            )
 
-        # 商品説明を取得
-        try:
-            description = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CLASS_NAME, 'item__description__line-limited'))
-            ).text
-        except TimeoutException:
+        # 商品説明
+        description = get_text_by_selectors(driver, selectors["description"])
+        if not description:
             print("商品説明の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="rakuma",
+                url=url,
+                field_name="description",
+                selectors=selectors["description"],
+                driver=driver
+            )
 
-        # 在庫状況を確認
-        try:
-            sold_out_element = driver.find_element(By.CSS_SELECTOR, 'span.type-modal__contents--button--sold')
-            if sold_out_element:
-                status = "売り切れ"
-        except Exception:
-            status = "在庫あり"  # 売り切れ要素が見つからなければ在庫あり
-            print("売り切れ要素が見つかりませんでした。デフォルトで在庫ありに設定します。")
+        # 複数画像URL
+        images_urls = []
+        for selector in selectors["images"]:
+            images_urls = get_attributes_by_selector(driver, selector, "src")
+            if images_urls:
+                images_urls = list(dict.fromkeys(images_urls))
+                break
 
-        try:
-            images_urls="あああ"
-        except TimeoutException:
+        if not images_urls:
             print("写真たちのURLの取得に失敗しました。")
-            
+            save_scraping_failure(
+                site_name="rakuma",
+                url=url,
+                field_name="images",
+                selectors=selectors["images"],
+                driver=driver
+            )
+
+        # 在庫状況
+        status = "在庫あり"
+        sold_out_found = False
+
+        try:
+            for selector in selectors["sold_out"]:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+
+                if not elements:
+                    continue
+
+                for element in elements:
+                    aria_label = element.get_attribute("aria-label")
+                    alt = element.get_attribute("alt")
+                    text = element.text
+
+                    print(
+                        f"在庫確認: selector={selector}, "
+                        f"aria-label={aria_label}, alt={alt}, text={text}"
+                    )
+
+                    if (
+                        aria_label == "売り切れ"
+                        or alt == "sold"
+                        or "売り切れ" in (text or "")
+                        or "SOLD" in (text or "")
+                        or "sold" in (alt or "").lower()
+                    ):
+                        status = "売り切れ"
+                        sold_out_found = True
+                        break
+
+                if sold_out_found:
+                    break
+
+        except Exception as e:
+            print(f"在庫状況の取得に失敗しました: {e}")
+            status = "ステータスを取得できませんでした"
+            save_scraping_failure(
+                site_name="rakuma",
+                url=url,
+                field_name="status",
+                selectors=selectors["sold_out"],
+                driver=driver
+            )
 
     except Exception as e:
         print(f"予期しないエラーが発生しました: {e}")
+        title, price, condition, image_url, description, status, images_urls = (
+            None, None, None, None, None, "ステータスを取得できませんでした", []
+        )
+
     finally:
         driver.quit()
 
@@ -1088,103 +1305,187 @@ def scrape_rakuma(url):
 
 
 def scrape_rakuten(url):
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--remote-debugging-port=9222')
-    chrome_options.add_argument('--lang=ja-JP')
+    if not url or not url.startswith("http"):
+        print("無効なURL:", url)
+        return None, None, None, None, None, "ステータスを取得できませんでした", []
 
-    service = Service(ChromeDriverManager().install())
+    selectors = load_selectors()["rakuten"]
+
+    chrome_options = Options()
+    chrome_options.binary_location = "/usr/bin/chromium"
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--remote-debugging-port=9222")
+    chrome_options.add_argument("--lang=ja-JP")
+
+    service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
-    driver.get(url)
-
-    # 初期化
     title = price = condition = image_url = description = status = None
     images_urls = []
 
     try:
-        # 商品名を取得
-        try:
-            title_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'span.normal_reserve_item_name > b'))
-            )
-            title = title_element.text
-        except TimeoutException:
+        driver.get(url)
+
+        # 商品名
+        title = get_text_by_selectors(driver, selectors["title"])
+        if not title:
             print("商品名の取得に失敗しました。")
-            title = None
-
-        # 価格を取得
-        try:
-            price_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.value--3Z7Nj'))
+            save_scraping_failure(
+                site_name="rakuten",
+                url=url,
+                field_name="title",
+                selectors=selectors["title"],
+                driver=driver
             )
-            price = price_element.text
-        except TimeoutException:
+
+        # 価格
+        price = get_text_by_selectors(driver, selectors["price"])
+        if not price:
             print("価格の取得に失敗しました。")
-            price = None
-
-        # 商品の状態を取得
-        try:
-            # 商品状態が格納されている <td> 要素を取得
-            condition_element = driver.find_element(By.CSS_SELECTOR, 'td[irc="ConditionTag"]')
-
-            # <td> 内に中古を示す特定の <div> 要素があるか確認
-            try:
-                used_element = condition_element.find_element(By.CSS_SELECTOR, 'div.logo--392k6.used-acceptable--OOlqc')
-                condition = "中古"  # 中古の場合
-            except NoSuchElementException:
-                condition = "新品"  # 中古要素がない場合は新品
-        except NoSuchElementException:
-            print("商品の状態の取得に失敗しました。デフォルト値を使用します。")
-            condition = "新品"  # デフォルト値
-
-        # メイン画像URLを取得
-        try:
-            main_image_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.image-wrapper--1-6ju img'))
+            save_scraping_failure(
+                site_name="rakuten",
+                url=url,
+                field_name="price",
+                selectors=selectors["price"],
+                driver=driver
             )
-            image_url = main_image_element.get_attribute('src')
-        except TimeoutException:
+
+        # 商品の状態
+        condition = get_text_by_selectors(driver, selectors["condition"])
+
+        if not condition:
+            # 中古判定用の要素があれば中古、なければ新品
+            used_found = False
+
+            try:
+                for selector in selectors["used_condition"]:
+                    elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                    if elements:
+                        used_found = True
+                        break
+
+                if used_found:
+                    condition = "中古"
+                else:
+                    condition = "新品"
+
+            except Exception as e:
+                print(f"商品の状態の判定に失敗しました: {e}")
+                condition = "新品"
+
+        if not condition:
+            print("商品の状態の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="rakuten",
+                url=url,
+                field_name="condition",
+                selectors=selectors["condition"],
+                driver=driver
+            )
+
+        # メイン画像URL
+        image_url = get_attribute_by_selectors(driver, selectors["image_url"], "src")
+
+        if not image_url:
+            image_url = get_attribute_by_selectors(driver, selectors["image_url"], "content")
+
+        if not image_url:
             print("メイン画像URLの取得に失敗しました。")
-            image_url = None
+            save_scraping_failure(
+                site_name="rakuten",
+                url=url,
+                field_name="image_url",
+                selectors=selectors["image_url"],
+                driver=driver
+            )
 
-        # 商品説明を取得
-        try:
-            description_element = driver.find_element(By.CSS_SELECTOR, 'td[irc="SpecTableArea"]')
-            description = description_element.text.strip()  # テキストを取得して余分な空白を除去
-        except NoSuchElementException:
+        # 商品説明
+        description = get_text_by_selectors(driver, selectors["description"])
+        if not description:
             print("商品の説明の取得に失敗しました。")
-            description = None
+            save_scraping_failure(
+                site_name="rakuten",
+                url=url,
+                field_name="description",
+                selectors=selectors["description"],
+                driver=driver
+            )
 
-        # 在庫情報を取得
+        # 在庫情報
+        status = "在庫あり"
+        sold_out_found = False
+
         try:
-            # 売り切れを示す特定の <div> 要素を検索
-            sold_out_element = driver.find_element(By.CSS_SELECTOR, 
-                                                'div.text-display--1Iony.type-body--1W5uC.size-medium--JpmnL.align-left--1hi1x.color-crimson--_Y7TS.layout-inline--1ajCj')
+            for selector in selectors["sold_out"]:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
 
-            # 売り切れ文言を確認
-            if "この商品は売り切れです" in sold_out_element.text:
-                status = "売り切れ"  # 売り切れの場合
-            else:
-                status = "在庫あり"  # 売り切れ文言がない場合
-        except NoSuchElementException:
-            # 売り切れ要素が見つからない場合は在庫ありと判断
-            print("売り切れ要素が見つかりませんでした。")
-            status = "在庫あり"  # デフォルト値
+                if not elements:
+                    continue
 
-        # すべての画像URLを取得
-        try:
-            image_elements = driver.find_elements(By.CSS_SELECTOR, 'div.image-wrapper--1-6ju img')
-            images_urls = [img.get_attribute('src') for img in image_elements]
-        except TimeoutException:
+                for element in elements:
+                    aria_label = element.get_attribute("aria-label")
+                    alt = element.get_attribute("alt")
+                    text = element.text
+
+                    print(
+                        f"在庫確認: selector={selector}, "
+                        f"aria-label={aria_label}, alt={alt}, text={text}"
+                    )
+
+                    if (
+                        aria_label == "売り切れ"
+                        or alt == "sold"
+                        or "売り切れ" in (text or "")
+                        or "売り切れです" in (text or "")
+                        or "この商品は売り切れです" in (text or "")
+                        or "在庫なし" in (text or "")
+                        or "SOLD" in (text or "")
+                        or "sold" in (alt or "").lower()
+                    ):
+                        status = "売り切れ"
+                        sold_out_found = True
+                        break
+
+                if sold_out_found:
+                    break
+
+        except Exception as e:
+            print(f"在庫情報の取得に失敗しました: {e}")
+            status = "ステータスを取得できませんでした"
+            save_scraping_failure(
+                site_name="rakuten",
+                url=url,
+                field_name="status",
+                selectors=selectors["sold_out"],
+                driver=driver
+            )
+
+        # すべての画像URL
+        images_urls = []
+        for selector in selectors["images"]:
+            images_urls = get_attributes_by_selector(driver, selector, "src")
+            if images_urls:
+                images_urls = list(dict.fromkeys(images_urls))
+                break
+
+        if not images_urls:
             print("すべての画像URLの取得に失敗しました。")
-            images_urls = []
+            save_scraping_failure(
+                site_name="rakuten",
+                url=url,
+                field_name="images",
+                selectors=selectors["images"],
+                driver=driver
+            )
 
     except Exception as e:
         print(f"スクレイピング中にエラーが発生しました: {e}")
+        title, price, condition, image_url, description, status, images_urls = (
+            None, None, None, None, None, "ステータスを取得できませんでした", []
+        )
 
     finally:
         driver.quit()
@@ -1192,82 +1493,172 @@ def scrape_rakuten(url):
     return title, price, condition, image_url, description, status, images_urls
 
 
-
-
 def scrape_amazon(url):
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--remote-debugging-port=9222')
-    chrome_options.add_argument('--lang=ja-JP')
+    if not url or not url.startswith("http"):
+        print("無効なURL:", url)
+        return None, None, None, None, None, "ステータスを取得できませんでした", []
 
-    service = Service(ChromeDriverManager().install())
+    selectors = load_selectors()["amazon"]
+
+    chrome_options = Options()
+    chrome_options.binary_location = "/usr/bin/chromium"
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--remote-debugging-port=9222")
+    chrome_options.add_argument("--lang=ja-JP")
+
+    service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
-    driver.get(url)
-
-    # デフォルト値を設定
-    title = price = image_url = description = stock_status = None
+    title = price = condition = image_url = description = status = None
+    images_urls = []
 
     try:
-        # 商品名を取得
-        try:
-            title = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.ID, 'productTitle'))
-            ).text.strip()
-            print("title")
-        except TimeoutException:
+        driver.get(url)
+
+        # 商品名
+        title = get_text_by_selectors(driver, selectors["title"])
+        if not title:
             print("商品名の取得に失敗しました。")
-
-        # 価格を取得
-        try:
-            price_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CLASS_NAME, 'a-price-whole'))
+            save_scraping_failure(
+                site_name="amazon",
+                url=url,
+                field_name="title",
+                selectors=selectors["title"],
+                driver=driver
             )
-            price = price_element.text.strip() + "円"
-        except TimeoutException:
+
+        # 価格
+        price = get_text_by_selectors(driver, selectors["price"])
+        if price:
+            price = price.strip()
+            if not price.endswith("円") and "￥" not in price and "¥" not in price:
+                price = price + "円"
+
+        if not price:
             print("価格の取得に失敗しました。")
+            save_scraping_failure(
+                site_name="amazon",
+                url=url,
+                field_name="price",
+                selectors=selectors["price"],
+                driver=driver
+            )
 
-        condition="新品"
+        # 商品状態
+        condition = get_text_by_selectors(driver, selectors["condition"])
+        if not condition:
+            condition = "新品"
 
-        # 商品画像のURLを取得
-        try:
-            image_url = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.ID, 'landingImage'))
-            ).get_attribute('src')
-        except TimeoutException:
+        # メイン画像URL
+        image_url = get_attribute_by_selectors(driver, selectors["image_url"], "src")
+
+        if not image_url:
+            image_url = get_attribute_by_selectors(driver, selectors["image_url"], "data-old-hires")
+
+        if not image_url:
+            image_url = get_attribute_by_selectors(driver, selectors["image_url"], "content")
+
+        if not image_url:
             print("画像URLの取得に失敗しました。")
-
-        # 商品説明を取得
-        try:
-            description_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.ID, 'feature-bullets'))
+            save_scraping_failure(
+                site_name="amazon",
+                url=url,
+                field_name="image_url",
+                selectors=selectors["image_url"],
+                driver=driver
             )
-            description = description_element.text.strip()
-        except TimeoutException:
+
+        # 商品説明
+        description = get_text_by_selectors(driver, selectors["description"])
+        if not description:
             print("商品の説明の取得に失敗しました。")
-
-        # 在庫状況を確認
-        try:
-            sold_out_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.a-section.a-spacing-base._Y2VyY_wgtHeading_2CLNq h2.a-size-large.a-spacing-none.a-text-normal'))
+            save_scraping_failure(
+                site_name="amazon",
+                url=url,
+                field_name="description",
+                selectors=selectors["description"],
+                driver=driver
             )
-            if sold_out_element:
-                status = "売り切れ"
-        except TimeoutException:
-            status = "在庫あり"  # "代替商品"要素が見つからなければ在庫あり
 
+        # 複数画像URL
+        images_urls = []
+        for selector in selectors["images"]:
+            images_urls = get_attributes_by_selector(driver, selector, "src")
+            if images_urls:
+                images_urls = list(dict.fromkeys(images_urls))
+                break
 
-        
-        try:
-            images_urls="あああ"
-        except TimeoutException:
+        if not images_urls and image_url:
+            images_urls = [image_url]
+
+        if not images_urls:
             print("写真たちのURLの取得に失敗しました。")
+            save_scraping_failure(
+                site_name="amazon",
+                url=url,
+                field_name="images",
+                selectors=selectors["images"],
+                driver=driver
+            )
+
+        # 在庫状況
+        status = "在庫あり"
+        sold_out_found = False
+
+        try:
+            for selector in selectors["sold_out"]:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+
+                if not elements:
+                    continue
+
+                for element in elements:
+                    aria_label = element.get_attribute("aria-label")
+                    alt = element.get_attribute("alt")
+                    text = element.text
+
+                    print(
+                        f"在庫確認: selector={selector}, "
+                        f"aria-label={aria_label}, alt={alt}, text={text}"
+                    )
+
+                    if (
+                        aria_label == "売り切れ"
+                        or alt == "sold"
+                        or "売り切れ" in (text or "")
+                        or "在庫切れ" in (text or "")
+                        or "現在在庫切れ" in (text or "")
+                        or "一時的に在庫切れ" in (text or "")
+                        or "この商品は現在お取り扱いできません" in (text or "")
+                        or "SOLD" in (text or "")
+                        or "sold" in (alt or "").lower()
+                    ):
+                        status = "売り切れ"
+                        sold_out_found = True
+                        break
+
+                if sold_out_found:
+                    break
+
+        except Exception as e:
+            print(f"在庫状況の取得に失敗しました: {e}")
+            status = "ステータスを取得できませんでした"
+            save_scraping_failure(
+                site_name="amazon",
+                url=url,
+                field_name="status",
+                selectors=selectors["sold_out"],
+                driver=driver
+            )
 
     except Exception as e:
         print(f"予期しないエラーが発生しました: {e}")
+        title, price, condition, image_url, description, status, images_urls = (
+            None, None, None, None, None, "ステータスを取得できませんでした", []
+        )
 
     finally:
         driver.quit()

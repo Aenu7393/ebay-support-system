@@ -67,5 +67,245 @@
       "ul.ProductImage__images img",
       ".ProductImage__inner img"
     ]
+  },
+  
+  "yahoo_hurima": {
+    "title": [
+      "h1.sc-7b08a9bb-0 span",
+      "h1 span",
+      "h1"
+    ],
+    "price": [
+      "span.sc-c8f146f8-0 span.gjEqBV",
+      "[data-testid='price']",
+      "span[class*='Price']",
+      "p[class*='Price']",
+      "span"
+    ],
+    "condition": [
+      "td.sc-227e83e5-3 span",
+      "th:-soup-contains('商品の状態') + td span",
+      "td span"
+    ],
+    "image_url": [
+      "div.slick-slide.slick-active img",
+      "div.slick-track img",
+      "meta[property='og:image']",
+      "img"
+    ],
+    "description": [
+      "div.ItemText__Text span",
+      "section div span",
+      "p",
+      "div[class*='ItemText'] span"
+    ],
+    "images": [
+      "div.slick-track div[data-index]:not([data-index='-1']) img",
+      "div.slick-track img",
+      "div.slick-slide img",
+      "img"
+    ],
+    "sold_out": [
+      "img[alt='sold']",
+      "img[alt='SOLD']",
+      "[aria-label='売り切れ']",
+      "*[class*='sold']",
+      "*[class*='Sold']"
+    ]
+  },
+
+  "yahoo_shopping": {
+    "title": [
+      "div.styles_itemName__Cf_Kt.styles_itemName__tCTR2 p.styles_name__u228e",
+      "p.styles_name__u228e",
+      "[class*='itemName'] [class*='name']",
+      "h1",
+      "meta[property='og:title']"
+    ],
+    "price": [
+      "div.styles_priceWrap__LAAeb p.styles_price__7WGwS",
+      "p.styles_price__7WGwS",
+      "[class*='priceWrap'] [class*='price']",
+      "[class*='Price']",
+      "meta[property='product:price:amount']"
+    ],
+    "condition": [
+      "div.styles_itemName__Cf_Kt.styles_itemName__tCTR2 p.styles_itemType__rcD2w",
+      "p.styles_itemType__rcD2w",
+      "[class*='itemType']"
+    ],
+    "image_url": [
+      "li.splide__slide.is-active img.styles_image__Q5O03",
+      "li.splide__slide.is-active img",
+      "ul.splide__list img",
+      "meta[property='og:image']"
+    ],
+    "images": [
+      "ul.splide__list li.splide__slide img.styles_image__Q5O03",
+      "ul.splide__list li.splide__slide img",
+      "ul.splide__list img",
+      "img.styles_image__Q5O03"
+    ],
+    "description": [
+      "[class*='description']",
+      "[class*='Description']",
+      "[class*='ItemText']",
+      "section p"
+    ],
+    "sold_out": [
+      "div.text-display--1Iony.color-crimson--_Y7TS",
+      "[class*='color-crimson']",
+      "[class*='sold']",
+      "[class*='Sold']",
+      "[aria-label='売り切れ']"
+    ]
+  },
+
+  "rakuma": {
+    "title": [
+      ".item__name",
+      "[class*='item__name']",
+      "h1",
+      "meta[property='og:title']"
+    ],
+    "price": [
+      ".item__price",
+      "[class*='item__price']",
+      "meta[property='product:price:amount']"
+    ],
+    "condition": [
+      "table.item__details th + td",
+      ".item__details td",
+      "[class*='item__details'] td"
+    ],
+    "image_url": [
+      "div.sp-image-container > img",
+      ".sp-image-container img",
+      "meta[property='og:image']",
+      "img"
+    ],
+    "description": [
+      ".item__description__line-limited",
+      "[class*='item__description']",
+      "meta[property='og:description']"
+    ],
+    "images": [
+      "div.sp-image-container img",
+      ".sp-image-container img",
+      "img"
+    ],
+    "sold_out": [
+      "span.type-modal__contents--button--sold",
+      "[class*='button--sold']",
+      "[class*='sold']",
+      "[class*='Sold']",
+      "[aria-label='売り切れ']"
+    ]
+  },
+
+  "rakuten": {
+    "title": [
+      "span.normal_reserve_item_name > b",
+      ".normal_reserve_item_name b",
+      "[class*='item_name'] b",
+      "[class*='itemName']",
+      "h1",
+      "meta[property='og:title']"
+    ],
+    "price": [
+      "div.value--3Z7Nj",
+      "[class*='value--']",
+      "[class*='price']",
+      "[class*='Price']",
+      "meta[property='product:price:amount']"
+    ],
+    "condition": [
+      "td[irc='ConditionTag']",
+      "[irc='ConditionTag']",
+      "[class*='condition']",
+      "[class*='Condition']"
+    ],
+    "used_condition": [
+      "td[irc='ConditionTag'] div.logo--392k6.used-acceptable--OOlqc",
+      "td[irc='ConditionTag'] [class*='used']",
+      "[irc='ConditionTag'] [class*='used']",
+      "[class*='used']"
+    ],
+    "image_url": [
+      "div.image-wrapper--1-6ju img",
+      "[class*='image-wrapper'] img",
+      "meta[property='og:image']"
+    ],
+    "description": [
+      "td[irc='SpecTableArea']",
+      "[irc='SpecTableArea']",
+      "[class*='description']",
+      "[class*='Description']",
+      "meta[property='og:description']"
+    ],
+    "sold_out": [
+      "div.text-display--1Iony.type-body--1W5uC.size-medium--JpmnL.align-left--1hi1x.color-crimson--_Y7TS.layout-inline--1ajCj",
+      "[class*='color-crimson']",
+      "[class*='sold']",
+      "[class*='Sold']",
+      "[aria-label='売り切れ']"
+    ],
+    "images": [
+      "div.image-wrapper--1-6ju img",
+      "[class*='image-wrapper'] img",
+      "img"
+    ]
+  },
+  
+  "amazon": {
+    "title": [
+      "#productTitle",
+      "span#productTitle",
+      "h1 span",
+      "meta[property='og:title']"
+    ],
+    "price": [
+      ".a-price .a-offscreen",
+      "span.a-price-whole",
+      ".a-price-whole",
+      "#priceblock_ourprice",
+      "#priceblock_dealprice",
+      "#corePrice_feature_div .a-offscreen",
+      "meta[property='product:price:amount']"
+    ],
+    "condition": [
+      "#usedBuySection",
+      "#newAccordionRow",
+      "#condition-value",
+      "[class*='condition']"
+    ],
+    "image_url": [
+      "#landingImage",
+      "img#landingImage",
+      "#imgTagWrapperId img",
+      "meta[property='og:image']"
+    ],
+    "description": [
+      "#feature-bullets",
+      "#productDescription",
+      "#bookDescription_feature_div",
+      "#aplus",
+      "meta[property='og:description']"
+    ],
+    "images": [
+      "#altImages img",
+      "#imageBlock img",
+      "#main-image-container img",
+      "#imgTagWrapperId img",
+      "img#landingImage"
+    ],
+    "sold_out": [
+      "#availability",
+      "#outOfStock",
+      "#availability span",
+      "div.a-section.a-spacing-base._Y2VyY_wgtHeading_2CLNq h2.a-size-large.a-spacing-none.a-text-normal",
+      "[class*='availability']",
+      "[class*='outOfStock']"
+    ]
   }
 }
