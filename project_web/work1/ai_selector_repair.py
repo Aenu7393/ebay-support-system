@@ -77,7 +77,20 @@ HTML:
 }}
 """
 
+def clean_ai_json_output(output_text):
+    output_text = output_text.strip()
 
+    if output_text.startswith("```json"):
+        output_text = output_text.replace("```json", "", 1).strip()
+
+    if output_text.startswith("```"):
+        output_text = output_text.replace("```", "", 1).strip()
+
+    if output_text.endswith("```"):
+        output_text = output_text[:-3].strip()
+
+    return output_text
+    
 def propose_selector_fix(failure_json_path):
     client = get_openai_client()
 
