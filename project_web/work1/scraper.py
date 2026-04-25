@@ -655,13 +655,19 @@ def scrape_mercari(url):
             if failure_json_path:
                 failure_json_paths.append(failure_json_path)
 
+
         # 失敗が1つでもあれば、最初の1件だけAIに渡す
         if failure_json_paths:
             try:
-                try:
-                    from .ai_selector_repair import propose_selector_fix
-                except ImportError:
-                    from ai_selector_repair import propose_selector_fix
+                import sys
+                from pathlib import Path
+
+                scraper_dir = Path(__file__).resolve().parent
+
+                if str(scraper_dir) not in sys.path:
+                    sys.path.insert(0, str(scraper_dir))
+
+                from ai_selector_repair import propose_selector_fix
 
                 print("AIセレクタ修正案を生成します。対象:", failure_json_paths[0])
 
