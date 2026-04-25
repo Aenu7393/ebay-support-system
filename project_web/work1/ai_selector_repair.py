@@ -103,13 +103,15 @@ def propose_selector_fix(failure_json_path):
     )
 
     output_text = response.output_text
+    cleaned_output = clean_ai_json_output(output_text)
 
     try:
-        proposal = json.loads(output_text)
+        proposal = json.loads(cleaned_output)
     except json.JSONDecodeError:
         proposal = {
             "error": "AIの出力をJSONとして解析できませんでした",
-            "raw_output": output_text
+            "raw_output": output_text,
+            "cleaned_output": cleaned_output
         }
 
     output_path = PROPOSAL_DIR / f"proposal_{failure_json_path.stem}.json"
