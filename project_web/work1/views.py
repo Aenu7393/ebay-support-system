@@ -461,37 +461,37 @@ class IndexView(View):
             print("url:", url)
             print("user_id:", user_id)
 
-            if "mercari" in url:
+            if "mercari" in url:#メルカリ
                 data = scrape_mercari(url)
                 print("scrape_mercari done")
                 write_to_google_sheets(data, user_id, url, request, 1)
 
-            elif "store.shopping.yahoo" in url:
+            elif "store.shopping.yahoo" in url:#ヤフーショッピング
                 data = scrape_yahoo_shopping(url)
                 print("scrape_yahoo_shopping done")
                 write_to_google_sheets(data, user_id, url, request, 2)
 
-            elif "paypayfleamarket.yahoo" in url:
+            elif "paypayfleamarket.yahoo" in url:#ヤフオクフリマ
                 data = scrape_yahoo_hurima(url)
                 print("scrape_yahoo_hurima done")
                 write_to_google_sheets(data, user_id, url, request, 2)
 
-            elif "yahoo" in url:
+            elif "yahoo" in url:#ヤフオク
                 data = scrape_yahoo(url)
                 print("scrape_yahoo done")
                 write_to_google_sheets(data, user_id, url, request, 2)
 
-            elif "item.fril" in url:
+            elif "item.fril" in url:#ラクマ
                 data = scrape_rakuma(url)
                 print("scrape_rakuma done")
                 write_to_google_sheets(data, user_id, url, request, 3)
 
-            elif "item.rakuten" in url:
+            elif "item.rakuten" in url:#楽天
                 data = scrape_rakuten(url)
                 print("scrape_rakuten done")
                 write_to_google_sheets(data, user_id, url, request, 3)
 
-            elif "amazon" in url:
+            elif "amazon" in url:#アマゾン
                 data = scrape_amazon(url)
                 print("scrape_amazon done")
                 write_to_google_sheets(data, user_id, url, request, 4)

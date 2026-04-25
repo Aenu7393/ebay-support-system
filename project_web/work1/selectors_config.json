@@ -1,9 +1,8 @@
+
 {
   "mercari": {
     "title": [
-      "h1.heading__a7d91561.page__a7d91561",
-      "h1",
-      "meta[property='og:title']"
+      "h1.heading__561.p51"
     ],
     "price": [
       "div[data-testid='product-price']",
