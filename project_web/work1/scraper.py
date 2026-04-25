@@ -40,13 +40,11 @@ def save_scraping_failure(site_name, url, field_name, selectors, driver):
     html_path = failure_dir / f"{base_name}.html"
     json_path = failure_dir / f"{base_name}.json"
 
-    # HTMLを保存
     try:
         html_path.write_text(driver.page_source, encoding="utf-8")
     except Exception as e:
         print(f"HTML保存に失敗しました: {e}")
 
-    # メタ情報を保存
     failure_info = {
         "site_name": site_name,
         "url": url,
@@ -65,6 +63,10 @@ def save_scraping_failure(site_name, url, field_name, selectors, driver):
         print(f"失敗情報JSONの保存に失敗しました: {e}")
 
     print(f"スクレイピング失敗情報を保存しました: {json_path}")
+    print("exists json:", json_path.exists())
+    print("exists html:", html_path.exists())
+
+    return json_path
 
 
 def load_selectors():#selectors_config.json を読み込む関数
@@ -489,6 +491,9 @@ def scrape_mercari(url):
 
     selectors = load_selectors()["mercari"]
 
+    # 失敗JSONのパスをためる
+    failure_json_paths = []
+
     chrome_options = Options()
     chrome_options.binary_location = "/usr/bin/chromium"
     chrome_options.add_argument("--headless=new")
@@ -511,37 +516,43 @@ def scrape_mercari(url):
         title = get_text_by_selectors(driver, selectors["title"])
         if not title:
             print("タイトルの取得に失敗しました。")
-            save_scraping_failure(
+            failure_json_path = save_scraping_failure(
                 site_name="mercari",
                 url=url,
                 field_name="title",
                 selectors=selectors["title"],
                 driver=driver
             )
+            if failure_json_path:
+                failure_json_paths.append(failure_json_path)
 
         # 価格
         price = get_text_by_selectors(driver, selectors["price"])
         if not price:
             print("価格の取得に失敗しました。")
-            save_scraping_failure(
+            failure_json_path = save_scraping_failure(
                 site_name="mercari",
                 url=url,
                 field_name="price",
                 selectors=selectors["price"],
                 driver=driver
             )
+            if failure_json_path:
+                failure_json_paths.append(failure_json_path)
 
         # 商品状態
         condition = get_text_by_selectors(driver, selectors["condition"])
         if not condition:
             print("商品の状態の取得に失敗しました。")
-            save_scraping_failure(
+            failure_json_path = save_scraping_failure(
                 site_name="mercari",
                 url=url,
                 field_name="condition",
                 selectors=selectors["condition"],
                 driver=driver
             )
+            if failure_json_path:
+                failure_json_paths.append(failure_json_path)
 
         # メイン画像
         image_url = get_attribute_by_selectors(driver, selectors["image_url"], "src")
@@ -551,43 +562,49 @@ def scrape_mercari(url):
 
         if not image_url:
             print("画像URLの取得に失敗しました。")
-            save_scraping_failure(
+            failure_json_path = save_scraping_failure(
                 site_name="mercari",
                 url=url,
                 field_name="image_url",
                 selectors=selectors["image_url"],
                 driver=driver
             )
-
+            if failure_json_path:
+                failure_json_paths.append(failure_json_path)
 
         # 説明文
         description = get_text_by_selectors(driver, selectors["description"])
         if not description:
             print("商品の説明の取得に失敗しました。")
-            save_scraping_failure(
+            failure_json_path = save_scraping_failure(
                 site_name="mercari",
                 url=url,
                 field_name="description",
                 selectors=selectors["description"],
                 driver=driver
             )
+            if failure_json_path:
+                failure_json_paths.append(failure_json_path)
 
         # すべての画像URL
         images_urls = []
         for selector in selectors["images"]:
             images_urls = get_attributes_by_selector(driver, selector, "src")
             if images_urls:
+                images_urls = list(dict.fromkeys(images_urls))
                 break
+
         if not images_urls:
             print("複数画像URLの取得に失敗しました。")
-            save_scraping_failure(
+            failure_json_path = save_scraping_failure(
                 site_name="mercari",
                 url=url,
                 field_name="images",
                 selectors=selectors["images"],
                 driver=driver
             )
-
+            if failure_json_path:
+                failure_json_paths.append(failure_json_path)
 
         # 在庫ステータス
         status = "在庫あり"
@@ -605,13 +622,17 @@ def scrape_mercari(url):
                     alt = element.get_attribute("alt")
                     text = element.text
 
-                    print(f"在庫確認: selector={selector}, aria-label={aria_label}, alt={alt}, text={text}")
+                    print(
+                        f"在庫確認: selector={selector}, "
+                        f"aria-label={aria_label}, alt={alt}, text={text}"
+                    )
 
                     if (
                         aria_label == "売り切れ"
                         or alt == "sold"
                         or "売り切れ" in (text or "")
                         or "SOLD" in (text or "")
+                        or "sold" in (alt or "").lower()
                     ):
                         status = "売り切れ"
                         sold_out_found = True
@@ -623,13 +644,34 @@ def scrape_mercari(url):
         except Exception as e:
             print(f"在庫ステータスの取得に失敗しました: {e}")
             status = "ステータスを取得できませんでした"
-            save_scraping_failure(
+
+            failure_json_path = save_scraping_failure(
                 site_name="mercari",
                 url=url,
                 field_name="status",
                 selectors=selectors["sold_out"],
                 driver=driver
             )
+            if failure_json_path:
+                failure_json_paths.append(failure_json_path)
+
+        # 失敗が1つでもあれば、最初の1件だけAIに渡す
+        if failure_json_paths:
+            try:
+                try:
+                    from .ai_selector_repair import propose_selector_fix
+                except ImportError:
+                    from ai_selector_repair import propose_selector_fix
+
+                print("AIセレクタ修正案を生成します。対象:", failure_json_paths[0])
+
+                proposal = propose_selector_fix(failure_json_paths[0])
+
+                print("AIセレクタ修正案:")
+                print(proposal)
+
+            except Exception as e:
+                print(f"AIセレクタ修正案の生成に失敗しました: {e}")
 
     except Exception as e:
         print(f"致命的なエラーが発生しました: {e}")

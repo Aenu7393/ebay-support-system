@@ -3,8 +3,13 @@ import os
 from pathlib import Path
 from openai import OpenAI
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+def get_openai_client():
+    api_key = os.getenv("OPENAI_API_KEY")
 
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY が設定されていません。")
+
+    return OpenAI(api_key=api_key)
 
 BASE_DIR = Path(__file__).resolve().parent
 FAILURE_DIR = BASE_DIR / "scraping_failures"
@@ -74,6 +79,8 @@ HTML:
 
 
 def propose_selector_fix(failure_json_path):
+    client = get_openai_client()
+
     failure_json_path = Path(failure_json_path)
 
     failure_info = load_json(failure_json_path)
@@ -110,7 +117,6 @@ def propose_selector_fix(failure_json_path):
 
     print(f"修正案を保存しました: {output_path}")
     return proposal
-
 
 if __name__ == "__main__":
     # 例:
